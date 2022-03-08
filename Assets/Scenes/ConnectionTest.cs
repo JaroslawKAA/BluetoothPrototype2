@@ -59,6 +59,12 @@ namespace Scenes
             scanAgainButton.onClick.AddListener(OnScanAgain);
         }
 
+        private void Start()
+        {
+            BluetoothLEHardwareInterface.Initialize(BluetoothDeviceRole.Central, ScanDevices,
+                error => { StatusMessage += "Error during initialize: " + error; });
+        }
+
         private void ScanDevices()
         {
             scanAgainButton.interactable = false;
@@ -74,12 +80,6 @@ namespace Scenes
                     detectedDevices.Add(address);
                 }
             });
-        }
-
-        private void Start()
-        {
-            BluetoothLEHardwareInterface.Initialize(BluetoothDeviceRole.Central, ScanDevices,
-                error => { StatusMessage += "Error during initialize: " + error; });
         }
 
         private void OnDestroy()
