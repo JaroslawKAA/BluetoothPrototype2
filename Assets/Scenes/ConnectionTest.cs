@@ -115,9 +115,9 @@ namespace Scenes
                     this.CharacteristicUUID = FullUUID(characteristicUUID);
                     this.MacAddress = address;
                     
-                    StatusMessage += $"Service: {ServiceUUID}";
-                    StatusMessage += $"Characteristic: {CharacteristicUUID}";
-                    StatusMessage += $"Mac: {MacAddress}";
+                    StatusMessage += $"Service: {serviceUUID}";
+                    StatusMessage += $"Characteristic: {characteristicUUID}";
+                    StatusMessage += $"Mac: {macAddress}";
                     
                     StartCoroutine(Subscribe());
                 }, disconnectedAddress =>

@@ -18,7 +18,7 @@ namespace Shatalmic.Example.ArduinoHM10Test
             None,
             Scan,
             Connect,
-            RequestMTU,
+            RequestMtu,
             Subscribe,
             Unsubscribe,
             Disconnect,
@@ -27,29 +27,53 @@ namespace Shatalmic.Example.ArduinoHM10Test
 
         #region Fields
 
-        [Header("Set Up")] [FormerlySerializedAs("HM10_Status")] [SerializeField]
-        private Text Status;
+        [FormerlySerializedAs("Status")] [Header("Set Up")] [FormerlySerializedAs("HM10_Status")] [SerializeField]
+        private Text status;
 
-        [SerializeField] private Text BluetoothStatus;
-        [SerializeField] private GameObject PanelMiddle;
-        [SerializeField] private InputField DeviceNameInput;
-        [SerializeField] private InputField ServiceUuidInput;
-        [SerializeField] private InputField CharacteristicUuidInput;
+        [SerializeField] private ScrollRect statusScrollRect;
 
-        private bool _workingFoundDevice = true;
+        [FormerlySerializedAs("BluetoothStatus")] [SerializeField]
+        private Text bluetoothStatus;
+
+        [FormerlySerializedAs("PanelMiddle")] [SerializeField]
+        private GameObject panelMiddle;
+
+        [FormerlySerializedAs("DeviceNameInput")] [SerializeField]
+        private InputField deviceNameInput;
+
+        [FormerlySerializedAs("ServiceUuidInput")] [SerializeField]
+        private InputField serviceUuidInput;
+
+        [FormerlySerializedAs("CharacteristicUuidInput")] [SerializeField]
+        private InputField characteristicUuidInput;
+
         private bool _connected = false;
         private float _timeout = 0f;
         private States _state = States.None;
         private bool _foundID = false;
+
         private string deviceAddress;
+        private string deviceName;
 
         #endregion
 
         #region Properties
 
-        private string DeviceName => DeviceNameInput.text;
-        private string ServiceUUID => ServiceUuidInput.text;
-        private string Characteristic => CharacteristicUuidInput.text;
+        private string DeviceNameText => deviceNameInput.text;
+        private string ServiceUuidText => serviceUuidInput.text;
+        private string CharacteristicUuidText => characteristicUuidInput.text;
+
+        public string Status
+        {
+            get => status.text;
+            set
+            {
+                status.text += '\n' + value;
+
+                // Scroll down after added status message
+                statusScrollRect.normalizedPosition = new Vector2();
+            }
+        }
 
         #endregion
 
@@ -57,19 +81,19 @@ namespace Shatalmic.Example.ArduinoHM10Test
 
         private void Awake()
         {
-            Assert.IsNotNull(Status);
-            Assert.IsNotNull(BluetoothStatus);
-            Assert.IsNotNull(PanelMiddle);
-            Assert.IsNotNull(DeviceNameInput);
-            Assert.IsNotNull(ServiceUuidInput);
-            Assert.IsNotNull(CharacteristicUuidInput);
+            Assert.IsNotNull(status);
+            Assert.IsNotNull(bluetoothStatus);
+            Assert.IsNotNull(panelMiddle);
+            Assert.IsNotNull(deviceNameInput);
+            Assert.IsNotNull(serviceUuidInput);
+            Assert.IsNotNull(characteristicUuidInput);
+            Assert.IsNotNull(statusScrollRect);
         }
 
-        void Start()
+        private void Start()
         {
-            Status.text = "";
+            Initialise();
         }
-
 
         void Update()
         {
@@ -86,30 +110,30 @@ namespace Shatalmic.Example.ArduinoHM10Test
                             break;
 
                         case States.Scan:
-                            BluetoothStatus.text = "Scanning for Mouse Arc devices...";
+                            bluetoothStatus.text = $"Scanning for {DeviceNameText} devices...";
+                            Debug.Log($"Scanning for {DeviceNameText} devices...");
+                            Status = $"Scanning for {DeviceNameText} devices...";
 
                             BluetoothLEHardwareInterface.ScanForPeripheralsWithServices(
                                 null, (address, name) =>
                                 {
                                     // we only want to look at devices that have the name we are looking for
                                     // this is the best way to filter out devices
-                                    if (name.ToLower().Contains(DeviceName.ToLower()))
+                                    if (name.ToLower().Contains(DeviceNameText.ToLower()))
                                     {
-                                        _workingFoundDevice = true;
-
                                         // it is always a good idea to stop scanning while you connect to a device
                                         // and get things set up
                                         BluetoothLEHardwareInterface.StopScan();
-                                        BluetoothStatus.text = "";
+                                        bluetoothStatus.text = "";
 
                                         // add it to the list and set to connect to it
                                         deviceAddress = address;
+                                        deviceName = name;
 
-                                        Status.text = "Found Arc Mouse";
+                                        Status = $"Found {deviceName}";
+                                        Debug.Log($"Found {deviceName}");
 
                                         SetState(States.Connect, 0.5f);
-
-                                        _workingFoundDevice = false;
                                     }
                                 }, null, false, false);
                             break;
@@ -118,69 +142,77 @@ namespace Shatalmic.Example.ArduinoHM10Test
                             // set these flags
                             _foundID = false;
 
-                            Status.text = $"Connecting to {DeviceName}";
+                            Status = $"Connecting to {deviceName}";
+                            Debug.Log($"Connecting to {deviceName}");
 
                             // note that the first parameter is the address, not the name. I have not fixed this because
-                            // of backwards compatiblity.
+                            // of backwards compatibility.
                             // also note that I am note using the first 2 callbacks. If you are not looking for specific characteristics you can use one of
                             // the first 2, but keep in mind that the device will enumerate everything and so you will want to have a timeout
                             // large enough that it will be finished enumerating before you try to subscribe or do any other operations.
-                            BluetoothLEHardwareInterface.ConnectToPeripheral(deviceAddress, null, null,
-                                (address, serviceUUID, characteristicUUID) =>
+                            BluetoothLEHardwareInterface.ConnectToPeripheral(deviceAddress, address =>
                                 {
-                                    if (IsEqual(serviceUUID, ServiceUUID))
-                                    {
-                                        // if we have found the characteristic that we are waiting for
-                                        // set the state. make sure there is enough timeout that if the
-                                        // device is still enumerating other characteristics it finishes
-                                        // before we try to subscribe
-                                        if (IsEqual(characteristicUUID, Characteristic))
-                                        {
-                                            _connected = true;
+                                    Status = $"Connected to {deviceName}, {address}...";
+                                    Debug.Log($"Connected to {deviceName}, {address}...");
+                                }, null,
+                                (address, serviceUuid, characteristicUuid) =>
+                                {
+                                    // Commented because i use the button to read characteristics
 
-                                            SetState(States.RequestMTU, 2f);
-
-                                            Status.text = $"Connected to {DeviceName}...";
-                                        }
-                                    }
+                                    // if we have found the characteristic that we are waiting for
+                                    // set the state. make sure there is enough timeout that if the
+                                    // device is still enumerating other characteristics it finishes
+                                    // before we try to subscribe
+                                    // if (IsEqual(serviceUuid, ServiceUUID) &&
+                                    //     IsEqual(characteristicUuid, Characteristic))
+                                    // {
+                                    //     _connected = true;
+                                    //
+                                    //     SetState(States.RequestMtu, 2f);
+                                    // }
                                 }, (disconnectedAddress) =>
                                 {
                                     BluetoothLEHardwareInterface.Log("Device disconnected: " + disconnectedAddress);
-                                    Status.text = "Disconnected";
+                                    Status = $"Disconnected {disconnectedAddress}";
+                                    Debug.Log($"Disconnected {disconnectedAddress}");
                                 });
                             break;
 
-                        case States.RequestMTU:
-                            Status.text = "Requesting MTU";
+                        case States.RequestMtu:
+                            Status = "Requesting MTU";
+                            Debug.Log("Requesting MTU");
 
                             BluetoothLEHardwareInterface.RequestMtu(deviceAddress, 185, (address, newMTU) =>
                             {
-                                Status.text = "MTU set to " + newMTU.ToString();
+                                Status = "MTU set to " + newMTU;
+                                Debug.Log("MTU set to " + newMTU);
 
                                 SetState(States.Subscribe, 0.1f);
                             });
                             break;
 
                         case States.Subscribe:
-                            Status.text = $"Subscribing to {DeviceName}";
+                            Status = $"Subscribing to {DeviceNameText}";
+                            Debug.Log($"Subscribing to {DeviceNameText}");
 
                             BluetoothLEHardwareInterface.SubscribeCharacteristicWithDeviceAddress(deviceAddress,
-                                ServiceUUID, Characteristic, null,
-                                (address, characteristicUUID, bytes) =>
+                                ServiceUuidText, CharacteristicUuidText, null,
+                                (address, characteristicUuid, bytes) =>
                                 {
-                                    Status.text = "Received Serial: " + Encoding.UTF8.GetString(bytes);
+                                    Status = "Received data: " + Encoding.UTF8.GetString(bytes);
+                                    Debug.Log("Received data: " + Encoding.UTF8.GetString(bytes));
                                 });
 
                             // set to the none state and the user can start sending and receiving data
                             _state = States.None;
-                            Status.text = "Waiting...";
+                            Status = "Waiting...";
+                            Debug.Log("Waiting...");
 
-                            PanelMiddle.SetActive(true);
                             break;
 
                         case States.Unsubscribe:
-                            BluetoothLEHardwareInterface.UnSubscribeCharacteristic(deviceAddress, ServiceUUID,
-                                Characteristic, null);
+                            BluetoothLEHardwareInterface.UnSubscribeCharacteristic(deviceAddress, ServiceUuidText,
+                                CharacteristicUuidText, null);
                             SetState(States.Disconnect, 4f);
                             break;
 
@@ -209,8 +241,6 @@ namespace Shatalmic.Example.ArduinoHM10Test
 
         void Reset()
         {
-            _workingFoundDevice =
-                false; // used to guard against trying to connect to a second device while still connecting to the first
             _connected = false;
             _timeout = 0f;
             _state = States.None;
@@ -223,17 +253,61 @@ namespace Shatalmic.Example.ArduinoHM10Test
 
         #region Methods
 
-        public void StartProcess()
+        public void Initialise()
         {
             Reset();
-            BluetoothStatus.text = "Initializing...";
+            bluetoothStatus.text = "Initializing...";
+            Debug.Log("Initializing...");
+            Status = "Initializing...";
 
             BluetoothLEHardwareInterface.Initialize(BluetoothDeviceRole.Central, () =>
             {
-                SetState(States.Scan, 0.1f);
+                bluetoothStatus.text = "Initialized";
+                Debug.Log("Initialized");
+                Status = "Initialized";
+            }, error =>
+            {
+                bluetoothStatus.text = "Error: " + error;
+                Debug.Log("Error: " + error);
+                Status = $"Error: {error}";
+            });
+        }
 
-                BluetoothStatus.text = "Initialized";
-            }, error => BluetoothStatus.text = "Error: " + error);
+        public void Connect()
+        {
+            SetState(States.Scan, .5f);
+        }
+
+        public void ReadCharacteristic()
+        {
+            Status = "Read characteristic...";
+            BluetoothLEHardwareInterface.ReadCharacteristic(deviceName,
+                FullUuid(ServiceUuidText),
+                FullUuid(CharacteristicUuidText),
+                (characteristicUuid, bytes) =>
+                {
+                    Status = $"Received data {Encoding.UTF8.GetString(bytes)}";
+                });
+        }
+
+        public void SubscribeCharacteristic()
+        {
+            Status = "Subscribe characteristic...";
+            SetState(States.Subscribe, 0.1f);
+        }
+
+        public void ListConnectedDevices()
+        {
+            BluetoothLEHardwareInterface.StopScan();
+
+            Status = "List devices:";
+            BluetoothLEHardwareInterface.RetrieveListOfPeripheralsWithServices(null,
+                ((address, name) => { Status = $"ConnDev: {name}, {address}"; }));
+        }
+
+        public void RequestMtu()
+        {
+            SetState(States.RequestMtu, 2f);
         }
 
         void SetState(States newState, float timeout)
@@ -243,7 +317,7 @@ namespace Shatalmic.Example.ArduinoHM10Test
         }
 
 
-        string FullUUID(string uuid)
+        string FullUuid(string uuid)
         {
             return "0000" + uuid + "-0000-1000-8000-00805F9B34FB";
         }
@@ -251,9 +325,9 @@ namespace Shatalmic.Example.ArduinoHM10Test
         bool IsEqual(string uuid1, string uuid2)
         {
             if (uuid1.Length == 4)
-                uuid1 = FullUUID(uuid1);
+                uuid1 = FullUuid(uuid1);
             if (uuid2.Length == 4)
-                uuid2 = FullUUID(uuid2);
+                uuid2 = FullUuid(uuid2);
 
             return (uuid1.ToUpper().Equals(uuid2.ToUpper()));
         }
@@ -264,7 +338,8 @@ namespace Shatalmic.Example.ArduinoHM10Test
             // notice that the 6th parameter is false. this is because the HM10 doesn't support withResponse writing to its characteristic.
             // some devices do support this setting and it is prefered when they do so that you can know for sure the data was received by 
             // the device
-            BluetoothLEHardwareInterface.WriteCharacteristic(deviceAddress, ServiceUUID, Characteristic, data,
+            BluetoothLEHardwareInterface.WriteCharacteristic(deviceAddress, ServiceUuidText, CharacteristicUuidText,
+                data,
                 data.Length,
                 false, (characteristicUUID) => { BluetoothLEHardwareInterface.Log("Write Succeeded"); });
         }
@@ -275,9 +350,11 @@ namespace Shatalmic.Example.ArduinoHM10Test
             // notice that the 6th parameter is false. this is because the HM10 doesn't support withResponse writing to its characteristic.
             // some devices do support this setting and it is prefered when they do so that you can know for sure the data was received by 
             // the device
-            BluetoothLEHardwareInterface.WriteCharacteristic(deviceAddress, ServiceUUID, Characteristic, data,
+            BluetoothLEHardwareInterface.WriteCharacteristic(deviceAddress, ServiceUuidText, CharacteristicUuidText,
+                data,
                 data.Length,
-                false, (characteristicUUID) => { BluetoothLEHardwareInterface.Log("Write Succeeded"); });
+                false, 
+                (characteristicUUID) => { BluetoothLEHardwareInterface.Log("Write Succeeded"); });
         }
 
         #endregion

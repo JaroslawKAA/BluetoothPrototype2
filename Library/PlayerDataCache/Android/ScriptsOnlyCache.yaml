@@ -6,13 +6,17 @@ ScriptsOnlyBuild:
     - UnityEditor.U2D.Animation.BoneGizmo
     Unity.2D.IK.Editor.dll:
     - UnityEditor.U2D.IK.IKEditorManager
+    - UnityEditor.U2D.IK.IKGizmos
     Unity.2D.Tilemap.Editor.dll:
     - UnityEditor.Tilemaps.GridPaintingState
+    - UnityEditor.Tilemaps.GridPaletteBrushes
+    - UnityEditor.Tilemaps.GridPalettes
     - UnityEditor.Tilemaps.SceneViewGridManager
     - UnityEditor.Tilemaps.SceneViewOpenTilePaletteHelper
     - UnityEditor.Tilemaps.TileDragAndDropManager
     - UnityEditor.Tilemaps.TilemapPrefabStageHelper
     Unity.Mobile.AndroidLogcat.Editor.dll:
+    - Unity.Android.Logcat.AndroidLogcatConsoleWindow
     - Unity.Android.Logcat.AndroidLogcatManager
     Unity.Rider.Editor.dll:
     - Packages.Rider.Editor.RiderScriptEditorData
@@ -32,10 +36,15 @@ ScriptsOnlyBuild:
     - UnityEngine.EventSystems.StandaloneInputModule
     - UnityEngine.UI.Button
     - UnityEngine.UI.CanvasScaler
+    - UnityEngine.UI.ContentSizeFitter
     - UnityEngine.UI.GraphicRaycaster
+    - UnityEngine.UI.HorizontalLayoutGroup
     - UnityEngine.UI.Image
     - UnityEngine.UI.InputField
     - UnityEngine.UI.LayoutElement
+    - UnityEngine.UI.Mask
+    - UnityEngine.UI.ScrollRect
+    - UnityEngine.UI.Scrollbar
     - UnityEngine.UI.Text
     - UnityEngine.UI.VerticalLayoutGroup
   sceneClasses:
@@ -65,6 +74,8 @@ ScriptsOnlyBuild:
     - Class: 114
       Script: {instanceID: 1724}
     - Class: 114
+      Script: {instanceID: 1802}
+    - Class: 114
       Script: {instanceID: 1914}
     - Class: 114
       Script: {instanceID: 2350}
@@ -81,11 +92,19 @@ ScriptsOnlyBuild:
     - Class: 114
       Script: {instanceID: 3512}
     - Class: 114
+      Script: {instanceID: 3524}
+    - Class: 114
       Script: {instanceID: 3636}
+    - Class: 114
+      Script: {instanceID: 3880}
     - Class: 114
       Script: {instanceID: 3982}
     - Class: 114
       Script: {instanceID: 4060}
+    - Class: 114
+      Script: {instanceID: 4742}
+    - Class: 114
+      Script: {instanceID: 4958}
     - Class: 114
       Script: {instanceID: 5102}
     - Class: 114
@@ -437,7 +456,7 @@ ScriptsOnlyBuild:
     className: Outline
   - hash:
       serializedVersion: 2
-      Hash: 30d575e9fcafa8fba0bccb89256ff1fc
+      Hash: 6178d7669dad9cd0b59e583eabab7b0b
     assemblyName: Assembly-CSharp.dll
     namespaceName: Shatalmic.Example.ArduinoHM10Test
     className: ReadCharacteristicTest
